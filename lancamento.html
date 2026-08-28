@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lançamento — Ocupação UPA</title>
+<style>
+  :root{
+    --bg: #f5f7f8;
+    --panel: #ffffff;
+    --field: #f5f7f8;
+    --border: #e1e7ea;
+    --text: #1c2b33;
+    --text-dim: #6d7c85;
+    --accent: #0d7a8c;
+    --accent-dark: #0a5f6e;
+
+    --verde: #3fa869;
+    --amarelo: #e0b62c;
+    --vermelho: #d84b3e;
+    --preto: #7a1f1a;
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0;
+    font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding: 32px 16px 60px;
+  }
+  .card{
+    width:100%;
+    max-width: 460px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px 24px;
+    box-shadow: 0 1px 3px rgba(28,43,51,.04);
+  }
+  .eyebrow{
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 6px;
+  }
+  h1{
+    font-size: 21px;
+    margin: 0 0 18px;
+    line-height: 1.25;
+    color: var(--text);
+  }
+
+  .tipo-toggle{
+    display:flex;
+    gap: 8px;
+    margin-bottom: 22px;
+    background: var(--field);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+  }
+  .tipo-toggle button{
+    flex:1;
+    padding: 10px 8px;
+    font-size: 13.5px;
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-dim);
+    cursor: pointer;
+  }
+  .tipo-toggle button.active{
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .field{ margin-bottom: 16px; }
+  label{
+    display:block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  label .req{ color: var(--vermelho); }
+  input[type=number], input[type=text]{
+    width:100%;
+    padding: 14px 16px;
+    font-size: 22px;
+    background: var(--field);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    -moz-appearance: textfield;
+  }
+  input[type=text]{ font-size:16px; }
+  input:focus{ outline: 2px solid var(--accent); outline-offset: 1px; }
+  input.invalid{ border-color: var(--vermelho); }
+
+  .stat-row{
+    display:flex;
+    gap: 10px;
+    margin: 4px 0 16px;
+  }
+  .stat{
+    flex:1;
+    background: var(--field);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    text-align:center;
+  }
+  .stat.negativo .n{ color: var(--vermelho); }
+  .stat .n{ font-size: 22px; font-weight:700; color: var(--text); }
+  .stat .l{ font-size: 10.5px; color: var(--text-dim); text-transform:uppercase; letter-spacing:.05em; margin-top:2px;}
+
+  .nivel-badge{
+    display:inline-block;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .alerta-vaga, .alerta-capacidade{
+    font-size:12.5px;
+    border-radius:8px;
+    padding:8px 10px;
+    margin-top:10px;
+  }
+  .alerta-vaga{ color:#97600d; background:#fdf1de; }
+  .alerta-capacidade{ color:#a33025; background:#fdedec; font-weight:700; }
+
+  button.enviar{
+    width:100%;
+    padding: 16px;
+    font-size: 16px;
+    font-weight:700;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor:pointer;
+  }
+  button.enviar:hover{ background: var(--accent-dark); }
+  button.enviar:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .msg{
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    display:none;
+  }
+  .msg.ok{ background: #eef8f1; border:1px solid var(--verde); color:#1f7a45; display:block; }
+  .msg.err{ background: #fdedec; border:1px solid var(--vermelho); color:#a33025; display:block; }
+  .loading, .notfound{ text-align:center; color: var(--text-dim); padding: 40px 10px; }
+  .last{
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 18px;
+    text-align:center;
+  }
+  .cronograma{
+    font-size: 11.5px;
+    color: var(--text-dim);
+    text-align:center;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card" id="app">
+  <div class="loading">Carregando unidade…</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ---------------------------------------------------------------------
+  // CONFIGURE AQUI
+  const SUPABASE_URL = 'https://mxlvavyrpishwbijkjec.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_tnVZxgDJ93Ry_08ezdd3LA_s7_GDfyz';
+  // ---------------------------------------------------------------------
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const app = document.getElementById('app');
+
+  const params = new URLSearchParams(window.location.search);
+  const unidadeId = params.get('u');
+
+  let tipoAtual = 'sala_vermelha';
+  let capacidades = {}; // { sala_vermelha: {leitos_totais}, enfermaria: {...} }
+  let unidadeNome = '';
+
+  function nivel(pct) {
+    if (pct <= 50) return { label: 'Verde', color: 'var(--verde)' };
+    if (pct <= 69) return { label: 'Amarelo', color: 'var(--amarelo)' };
+    if (pct <= 84) return { label: 'Vermelho', color: 'var(--vermelho)' };
+    return { label: 'Preto', color: 'var(--preto)' };
+  }
+
+  async function init() {
+    if (!unidadeId) {
+      app.innerHTML = `<div class="notfound">Link inválido. Peça à coordenação o link correto para sua unidade (deve conter <code>?u=</code>).</div>`;
+      return;
+    }
+
+    const { data: unidade, error } = await sb
+      .from('unidades')
+      .select('id, nome')
+      .eq('id', unidadeId)
+      .single();
+
+    if (error || !unidade) {
+      app.innerHTML = `<div class="notfound">Unidade não encontrada. Verifique o link com a coordenação.</div>`;
+      return;
+    }
+    unidadeNome = unidade.nome;
+
+    const { data: caps } = await sb
+      .from('capacidade_leitos')
+      .select('tipo, leitos_totais')
+      .eq('unidade_id', unidadeId);
+
+    (caps || []).forEach(c => { capacidades[c.tipo] = c.leitos_totais; });
+
+    renderShell();
+    await carregarFormulario();
+  }
+
+  function renderShell() {
+    app.innerHTML = `
+      <p class="eyebrow">PAP DAUE 018</p>
+      <h1>${unidadeNome}</h1>
+      <div class="tipo-toggle">
+        <button id="tipo-sala" class="active">Sala Vermelha</button>
+        <button id="tipo-enf">Enfermaria</button>
+      </div>
+      <div id="form-area"></div>
+    `;
+    document.getElementById('tipo-sala').addEventListener('click', () => trocarTipo('sala_vermelha'));
+    document.getElementById('tipo-enf').addEventListener('click', () => trocarTipo('enfermaria'));
+  }
+
+  function trocarTipo(tipo) {
+    tipoAtual = tipo;
+    document.getElementById('tipo-sala').classList.toggle('active', tipo === 'sala_vermelha');
+    document.getElementById('tipo-enf').classList.toggle('active', tipo === 'enfermaria');
+    carregarFormulario();
+  }
+
+  async function carregarFormulario() {
+    const leitos = capacidades[tipoAtual];
+    const formArea = document.getElementById('form-area');
+
+    if (!leitos) {
+      formArea.innerHTML = `<div class="notfound">Esta unidade não tem capacidade cadastrada para ${tipoAtual === 'enfermaria' ? 'Enfermaria' : 'Sala Vermelha'}. Fale com a coordenação.</div>`;
+      return;
+    }
+
+    formArea.innerHTML = `<div class="loading">Carregando…</div>`;
+
+    const { data: ultimo } = await sb
+      .from('registros_ocupacao')
+      .select('pacientes_internados, registrado_em, registrado_por, registrado_cargo')
+      .eq('unidade_id', unidadeId)
+      .eq('tipo', tipoAtual)
+      .order('registrado_em', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const cronogramaTexto = tipoAtual === 'enfermaria'
+      ? 'Lançamento obrigatório às 9h e às 20h'
+      : 'Lançamento obrigatório a cada 2 horas (00, 02, 04… 22h)';
+
+    formArea.innerHTML = `
+      <div class="field">
+        <label for="pacientes">Pacientes internados (${tipoAtual === 'enfermaria' ? 'Enfermaria' : 'Sala Vermelha'})</label>
+        <input type="number" id="pacientes" min="0" inputmode="numeric"
+               value="${ultimo ? ultimo.pacientes_internados : ''}" placeholder="0">
+      </div>
+
+      <div class="stat-row">
+        <div class="stat">
+          <div class="n">${leitos}</div>
+          <div class="l">Leitos totais</div>
+        </div>
+        <div class="stat" id="vagas-stat">
+          <div class="n" id="vagas-out">–</div>
+          <div class="l">Vagas</div>
+        </div>
+        <div class="stat">
+          <div class="n" id="pct-out">–</div>
+          <div class="l">Ocupação</div>
+        </div>
+      </div>
+
+      <div id="nivel-out" style="text-align:center; margin-bottom:18px;"></div>
+
+      <div class="field">
+        <label for="nome">Nome de quem está registrando <span class="req">*</span></label>
+        <input type="text" id="nome" placeholder="Ex: João Silva">
+      </div>
+
+      <div class="field">
+        <label for="cargo">Cargo <span class="req">*</span></label>
+        <input type="text" id="cargo" placeholder="Ex: Enfermeiro, Técnico NIR">
+      </div>
+
+      <button class="enviar" id="btn-enviar">Registrar ocupação</button>
+      <div class="msg" id="msg"></div>
+
+      <div class="cronograma">${cronogramaTexto}</div>
+      ${ultimo ? `<div class="last">Último registro: ${new Date(ultimo.registrado_em).toLocaleString('pt-BR')}
+        ${ultimo.registrado_por ? ' · ' + ultimo.registrado_por + (ultimo.registrado_cargo ? ' (' + ultimo.registrado_cargo + ')' : '') : ''}</div>` : ''}
+    `;
+
+    const input = document.getElementById('pacientes');
+    const vagasStat = document.getElementById('vagas-stat');
+    const vagasOut = document.getElementById('vagas-out');
+    const pctOut = document.getElementById('pct-out');
+    const nivelOut = document.getElementById('nivel-out');
+    const btn = document.getElementById('btn-enviar');
+    const msg = document.getElementById('msg');
+    const nomeInput = document.getElementById('nome');
+    const cargoInput = document.getElementById('cargo');
+
+    function atualizarPreview() {
+      let v = parseInt(input.value, 10);
+      if (isNaN(v) || v < 0) v = 0;
+      const vagas = leitos - v;
+      const pct = Math.round((v / leitos) * 100);
+      const n = nivel(pct);
+      vagasOut.textContent = vagas;
+      vagasStat.classList.toggle('negativo', vagas < 0);
+      pctOut.textContent = pct + '%';
+      nivelOut.innerHTML = `<span class="nivel-badge" style="background:${n.color}">Nível ${n.label}</span>`;
+      if (vagas === 1 && tipoAtual === 'sala_vermelha') {
+        nivelOut.innerHTML += `<div class="alerta-vaga">
+          ⚠ Só resta 1 vaga — não indicar como referência para outras regionais (item 4.2 do PAP).</div>`;
+      }
+      if (v > leitos) {
+        nivelOut.innerHTML += `<div class="alerta-capacidade">
+          ⚠ Lotação acima da capacidade em ${v - leitos} paciente(s).</div>`;
+      }
+    }
+
+    input.addEventListener('input', atualizarPreview);
+    if (input.value !== '') atualizarPreview();
+
+    btn.addEventListener('click', async () => {
+      const val = parseInt(input.value, 10);
+      const nome = nomeInput.value.trim();
+      const cargo = cargoInput.value.trim();
+
+      let temErro = false;
+      [input, nomeInput, cargoInput].forEach(el => el.classList.remove('invalid'));
+
+      if (isNaN(val) || val < 0) {
+        input.classList.add('invalid');
+        temErro = true;
+      }
+      if (!nome) { nomeInput.classList.add('invalid'); temErro = true; }
+      if (!cargo) { cargoInput.classList.add('invalid'); temErro = true; }
+
+      if (temErro) {
+        msg.className = 'msg err';
+        msg.textContent = 'Preencha o número de pacientes, nome e cargo antes de enviar.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Enviando…';
+
+      const { error } = await sb.from('registros_ocupacao').insert({
+        unidade_id: unidadeId,
+        tipo: tipoAtual,
+        pacientes_internados: val,
+        registrado_por: nome,
+        registrado_cargo: cargo
+      });
+
+      if (error) {
+        msg.className = 'msg err';
+        msg.textContent = 'Erro ao enviar. Tente novamente ou informe por telefone conforme item 5 (Contingência) do PAP.';
+        btn.disabled = false;
+        btn.textContent = 'Registrar ocupação';
+      } else {
+        msg.className = 'msg ok';
+        msg.textContent = 'Registrado com sucesso. Obrigado!';
+        btn.textContent = 'Registrado ✓';
+        setTimeout(() => { btn.disabled = false; btn.textContent = 'Registrar ocupação'; }, 2500);
+      }
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>

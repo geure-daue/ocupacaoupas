@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ocupação UPAs — Sala Vermelha e Enfermarias</title>
+<style>
+  :root{
+    --bg: #f5f7f8;
+    --panel: #ffffff;
+    --border: #e1e7ea;
+    --text: #1c2b33;
+    --text-dim: #6d7c85;
+    --accent: #0d7a8c;
+    --accent-soft: #e6f2f3;
+
+    --verde-bg: #eef8f1;    --verde-fg: #1f7a45;  --verde-line: #3fa869;
+    --amarelo-bg: #fdf7e6;  --amarelo-fg: #8a6b0a; --amarelo-line: #e0b62c;
+    --vermelho-bg: #fdedec; --vermelho-fg: #a33025; --vermelho-line: #d84b3e;
+    --preto-bg: #f1e9e9;    --preto-fg: #5c1611;  --preto-line: #7a1f1a;
+    --sem-bg: #f2f3f4;      --sem-fg: #8b979d;    --sem-line: #d3dadd;
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0;
+    font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px 24px 60px;
+  }
+  .wrap{ max-width: 1200px; margin: 0 auto; }
+
+  .header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .eyebrow{
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 6px;
+  }
+  h1{ margin:0; font-size: 24px; font-weight: 700; color: var(--text); }
+  .clock{
+    font-variant-numeric: tabular-nums;
+    color: var(--text-dim);
+    font-size: 13px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 8px;
+  }
+
+  .alert-banner{
+    display:none;
+    background: #fdedec;
+    border: 1px solid var(--vermelho-line);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+  }
+  .alert-banner.show{ display:block; }
+  .alert-banner .title{
+    font-weight: 700;
+    color: var(--vermelho-fg);
+    font-size: 14px;
+    margin-bottom: 6px;
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .alert-banner ul{
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .alert-banner li{ margin-bottom: 2px; }
+
+  .tabs{
+    display:flex;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .tabs button{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor:pointer;
+  }
+  .tabs button.active{
+    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .controls{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom: 14px;
+  }
+  .controls button{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor:pointer;
+  }
+  .controls button.active{
+    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .controls a.report-link{
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 700;
+  }
+  .controls a.report-link:hover{ text-decoration: underline; }
+
+  .legend{
+    margin-bottom: 22px;
+    display:flex;
+    gap: 20px;
+    flex-wrap:wrap;
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .legend span{ display:flex; align-items:center; gap:6px; }
+  .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 14px;
+  }
+  .card{
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 18px 18px 15px;
+    background: var(--panel);
+    border-left: 10px solid var(--border);
+    position: relative;
+  }
+  .card.verde    { border-left-color: var(--verde-line); }
+  .card.amarelo  { border-left-color: var(--amarelo-line); }
+  .card.vermelho { border-left-color: var(--vermelho-line); }
+  .card.preto    { border-left-color: var(--preto-line); }
+  .card.sem_registro { border-left-color: var(--sem-line); }
+
+  .card.atrasado{
+    box-shadow: 0 0 0 2px rgba(216,75,62,.35);
+    background: #fffaf9;
+  }
+
+  .top-row{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    margin-bottom: 4px;
+  }
+  .pct{
+    font-size: 34px;
+    font-weight: 800;
+    line-height:1;
+    color: var(--text);
+  }
+  .nivel-tag{
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: 4px 9px;
+    border-radius: 999px;
+    margin-top: 4px;
+    display:inline-block;
+  }
+  .card.verde    .nivel-tag { background: var(--verde-bg);    color: var(--verde-fg); }
+  .card.amarelo  .nivel-tag { background: var(--amarelo-bg);  color: var(--amarelo-fg); }
+  .card.vermelho .nivel-tag { background: var(--vermelho-bg); color: var(--vermelho-fg); }
+  .card.preto    .nivel-tag { background: var(--preto-bg);    color: var(--preto-fg); }
+  .card.sem_registro .nivel-tag { background: var(--sem-bg); color: var(--sem-fg); }
+
+  .nome{
+    font-size: 14.5px;
+    font-weight:700;
+    margin: 10px 0 12px;
+    text-transform:uppercase;
+    letter-spacing:.02em;
+    color: var(--text);
+  }
+  .row{
+    display:flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .mini{
+    flex:1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius:8px;
+    padding: 7px 8px;
+    text-align:center;
+  }
+  .mini.negativo .n{ color: var(--vermelho-fg); }
+  .mini .n{ font-size:16px; font-weight:700; color: var(--text); }
+  .mini .l{ font-size: 9.5px; color: var(--text-dim); text-transform:uppercase; letter-spacing:.05em; }
+
+  .badges{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom: 8px; }
+  .badge{
+    font-size: 10.5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .badge.stale{ background: var(--vermelho-bg); color: var(--vermelho-fg); }
+  .badge.noref{ background: #fdf1de; color: #97600d; }
+  .badge.overcap{ background: var(--preto-bg); color: var(--preto-fg); }
+
+  .updated{
+    font-size: 11.5px;
+    color: var(--text-dim);
+  }
+  .updated .status-ok{ color: var(--verde-fg); font-weight:700; }
+  .updated .status-late{ color: var(--vermelho-fg); font-weight:700; }
+  .registrador{
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .empty{
+    text-align:center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="header">
+  <div>
+    <p class="eyebrow">Rede de Urgência e Emergência · PBH</p>
+    <h1>Ocupação — UPAs</h1>
+  </div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<div class="alert-banner" id="alert-banner">
+  <div class="title">⚠ Unidades com lançamento pendente/atrasado</div>
+  <ul id="alert-list"></ul>
+</div>
+
+<div class="tabs">
+  <button id="tab-sala" class="active">Sala Vermelha</button>
+  <button id="tab-enf">Enfermarias</button>
+</div>
+
+<div class="controls">
+  <button id="sort-ordem" class="active">Ordem padrão</button>
+  <button id="sort-ocupacao">Mais vazias primeiro</button>
+  <a class="report-link" href="relatorios.html">📊 Relatórios →</a>
+</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:var(--verde-line)"></span> Verde ≤ 50%</span>
+  <span><span class="dot" style="background:var(--amarelo-line)"></span> Amarelo 51–69%</span>
+  <span><span class="dot" style="background:var(--vermelho-line)"></span> Vermelho 70–84%</span>
+  <span><span class="dot" style="background:var(--preto-line)"></span> Preto ≥ 85%</span>
+</div>
+
+<div class="grid" id="grid">
+  <div class="empty">Carregando dados…</div>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ---------------------------------------------------------------------
+  // CONFIGURE AQUI
+  const SUPABASE_URL = 'https://mxlvavyrpishwbijkjec.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_tnVZxgDJ93Ry_08ezdd3LA_s7_GDfyz';
+  // ---------------------------------------------------------------------
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const grid = document.getElementById('grid');
+  let dados = [];
+  let sortMode = 'ordem';
+  let tipoAtivo = 'sala_vermelha';
+
+  const nivelLabel = { verde: 'Verde', amarelo: 'Amarelo', vermelho: 'Vermelho', preto: 'Preto', sem_registro: 'Sem registro' };
+
+  function fmtMinutos(min) {
+    if (min == null) return '—';
+    if (min < 1) return 'agora';
+    if (min < 60) return `há ${Math.floor(min)} min`;
+    const h = Math.floor(min / 60);
+    const m = Math.floor(min % 60);
+    return `há ${h}h${m > 0 ? m + 'min' : ''}`;
+  }
+
+  function renderAlertas() {
+    const atrasadas = dados.filter(u => u.atrasado);
+    const banner = document.getElementById('alert-banner');
+    const list = document.getElementById('alert-list');
+    if (!atrasadas.length) {
+      banner.classList.remove('show');
+      return;
+    }
+    banner.classList.add('show');
+    list.innerHTML = atrasadas.map(u => `
+      <li><strong>${u.nome}</strong> — ${u.tipo === 'enfermaria' ? 'Enfermaria' : 'Sala Vermelha'}
+        ${u.registrado_em ? ' · último lançamento ' + fmtMinutos(u.minutos_desde_registro) : ' · nenhum lançamento ainda'}</li>
+    `).join('');
+  }
+
+  function render() {
+    renderAlertas();
+
+    const doTipo = dados.filter(u => u.tipo === tipoAtivo);
+    if (!doTipo.length) {
+      grid.innerHTML = `<div class="empty">Nenhuma unidade cadastrada para este tipo.</div>`;
+      return;
+    }
+    const lista = [...doTipo];
+    if (sortMode === 'ocupacao') {
+      lista.sort((a, b) => a.percentual_ocupacao - b.percentual_ocupacao);
+    } else {
+      lista.sort((a, b) => a.ordem - b.ordem);
+    }
+
+    grid.innerHTML = lista.map(u => `
+      <div class="card ${u.nivel} ${u.atrasado ? 'atrasado' : ''}">
+        <div class="top-row">
+          <div>
+            <div class="pct">${u.nivel === 'sem_registro' ? '—' : u.percentual_ocupacao + '%'}</div>
+            <div class="nivel-tag">${nivelLabel[u.nivel]}</div>
+          </div>
+        </div>
+        <div class="nome">${u.nome}</div>
+        <div class="row">
+          <div class="mini"><div class="n">${u.leitos_totais}</div><div class="l">Leitos</div></div>
+          <div class="mini"><div class="n">${u.pacientes_internados}</div><div class="l">Ocupados</div></div>
+          <div class="mini ${u.vagas < 0 ? 'negativo' : ''}"><div class="n">${u.vagas}</div><div class="l">Vagas</div></div>
+        </div>
+        <div class="badges">
+          ${u.acima_capacidade ? `<span class="badge overcap">⚠ acima da capacidade</span>` : ''}
+          ${!u.pode_ser_referencia && u.tipo === 'sala_vermelha' && u.nivel !== 'sem_registro' ? `<span class="badge noref">⚠ não indicar como referência</span>` : ''}
+          ${u.atrasado ? `<span class="badge stale">⏱ atrasado</span>` : ''}
+        </div>
+        <div class="updated">
+          ${u.registrado_em
+            ? `Último registro: ${new Date(u.registrado_em).toLocaleString('pt-BR')} ·
+               <span class="${u.atrasado ? 'status-late' : 'status-ok'}">${u.atrasado ? 'Atrasado' : 'No horário'}</span>`
+            : `<span class="status-late">Nenhum registro ainda</span>`}
+        </div>
+        ${u.registrado_por ? `<div class="registrador">por ${u.registrado_por}${u.registrado_cargo ? ', ' + u.registrado_cargo : ''}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  async function carregar() {
+    const { data, error } = await sb.from('v_ocupacao_atual').select('*');
+    if (!error && data) {
+      dados = data;
+      render();
+    }
+  }
+
+  document.getElementById('tab-sala').addEventListener('click', () => {
+    tipoAtivo = 'sala_vermelha';
+    document.getElementById('tab-sala').classList.add('active');
+    document.getElementById('tab-enf').classList.remove('active');
+    render();
+  });
+  document.getElementById('tab-enf').addEventListener('click', () => {
+    tipoAtivo = 'enfermaria';
+    document.getElementById('tab-enf').classList.add('active');
+    document.getElementById('tab-sala').classList.remove('active');
+    render();
+  });
+
+  document.getElementById('sort-ordem').addEventListener('click', (e) => {
+    sortMode = 'ordem';
+    document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    render();
+  });
+  document.getElementById('sort-ocupacao').addEventListener('click', (e) => {
+    sortMode = 'ocupacao';
+    document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    render();
+  });
+
+  function tickClock() {
+    document.getElementById('clock').textContent =
+      new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' });
+  }
+  setInterval(tickClock, 1000);
+  tickClock();
+
+  setInterval(carregar, 30000);
+
+  sb
+    .channel('registros-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'registros_ocupacao' }, carregar)
+    .subscribe();
+
+  carregar();
+</script>
+</body>
+</html>

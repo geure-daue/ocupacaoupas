@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatórios de Ocupação — UPAs</title>
+<style>
+  :root{
+    --bg: #f5f7f8;
+    --panel: #ffffff;
+    --field: #f5f7f8;
+    --border: #e1e7ea;
+    --text: #1c2b33;
+    --text-dim: #6d7c85;
+    --accent: #0d7a8c;
+    --accent-dark: #0a5f6e;
+    --vermelho: #d84b3e;
+    --verde: #3fa869;
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0;
+    font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px 24px 60px;
+  }
+  .wrap{ max-width: 1100px; margin: 0 auto; }
+
+  .header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .eyebrow{
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 6px;
+  }
+  h1{ margin:0; font-size: 24px; font-weight: 700; }
+  a.back{ font-size: 13px; color: var(--accent); text-decoration:none; font-weight:700; }
+  a.back:hover{ text-decoration: underline; }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 24px;
+  }
+
+  .filtros{
+    display:flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items:flex-end;
+    margin-bottom: 4px;
+  }
+  .campo{ display:flex; flex-direction:column; gap:6px; min-width: 160px; }
+  .campo label{ font-size: 12.5px; font-weight:700; color: var(--text-dim); }
+  select, input[type=date]{
+    padding: 10px 12px;
+    font-size: 14px;
+    background: var(--field);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+  }
+  .custom-datas{ display:none; gap: 14px; }
+  .custom-datas.show{ display:flex; }
+
+  button.gerar{
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor:pointer;
+  }
+  button.gerar:hover{ background: var(--accent-dark); }
+  button.gerar:disabled{ opacity:.5; cursor:not-allowed; }
+
+  button.csv{
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    background: var(--panel);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    cursor:pointer;
+  }
+  button.csv:hover{ background: var(--accent); color: #fff; }
+
+  .resultado-header{
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .resultado-header .info{ font-size: 13px; color: var(--text-dim); }
+
+  table{
+    width:100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  th, td{
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th{
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-dim);
+    font-weight: 700;
+  }
+  td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+  tr.overcap td.destaque{ color: var(--vermelho); font-weight: 700; }
+  .tipo-tag{
+    font-size: 10.5px;
+    font-weight:700;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--field);
+    color: var(--text-dim);
+  }
+
+  .empty{ text-align:center; padding: 40px 20px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="header">
+  <div>
+    <p class="eyebrow">Rede de Urgência e Emergência · PBH</p>
+    <h1>Relatórios de Ocupação</h1>
+  </div>
+  <a class="back" href="dashboard.html">← Voltar ao dashboard</a>
+</div>
+
+<div class="panel">
+  <div class="filtros">
+    <div class="campo">
+      <label for="periodo">Período</label>
+      <select id="periodo">
+        <option value="7">Semanal (últimos 7 dias)</option>
+        <option value="30" selected>Mensal (últimos 30 dias)</option>
+        <option value="182">Semestral (últimos 6 meses)</option>
+        <option value="365">Anual (últimos 12 meses)</option>
+        <option value="custom">Período customizado…</option>
+      </select>
+    </div>
+
+    <div class="campo custom-datas" id="custom-datas">
+      <div>
+        <label for="data-inicio">De</label>
+        <input type="date" id="data-inicio">
+      </div>
+      <div>
+        <label for="data-fim">Até</label>
+        <input type="date" id="data-fim">
+      </div>
+    </div>
+
+    <div class="campo">
+      <label for="tipo">Tipo</label>
+      <select id="tipo">
+        <option value="todos">Sala Vermelha + Enfermaria</option>
+        <option value="sala_vermelha">Só Sala Vermelha</option>
+        <option value="enfermaria">Só Enfermaria</option>
+      </select>
+    </div>
+
+    <button class="gerar" id="btn-gerar">Gerar relatório</button>
+  </div>
+</div>
+
+<div class="panel" id="resultado" style="display:none;">
+  <div class="resultado-header">
+    <div class="info" id="resultado-info"></div>
+    <button class="csv" id="btn-csv">⬇ Baixar CSV</button>
+  </div>
+  <div id="tabela-area"></div>
+</div>
+
+<div class="empty" id="estado-vazio">Escolha um período e clique em "Gerar relatório".</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ---------------------------------------------------------------------
+  // CONFIGURE AQUI (mesmos valores dos outros arquivos)
+  const SUPABASE_URL = 'https://mxlvavyrpishwbijkjec.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_tnVZxgDJ93Ry_08ezdd3LA_s7_GDfyz';
+  // ---------------------------------------------------------------------
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let ultimoResultado = [];
+
+  const periodoSelect = document.getElementById('periodo');
+  const customDatas = document.getElementById('custom-datas');
+
+  periodoSelect.addEventListener('change', () => {
+    customDatas.classList.toggle('show', periodoSelect.value === 'custom');
+  });
+
+  function calcularIntervalo() {
+    const val = periodoSelect.value;
+    const fim = new Date();
+    let inicio;
+
+    if (val === 'custom') {
+      const ini = document.getElementById('data-inicio').value;
+      const fimStr = document.getElementById('data-fim').value;
+      if (!ini || !fimStr) {
+        alert('Preencha as duas datas do período customizado.');
+        return null;
+      }
+      inicio = new Date(ini + 'T00:00:00');
+      const fimCustom = new Date(fimStr + 'T23:59:59');
+      return { inicio, fim: fimCustom };
+    }
+
+    const dias = parseInt(val, 10);
+    inicio = new Date(fim.getTime() - dias * 24 * 60 * 60 * 1000);
+    return { inicio, fim };
+  }
+
+  function fmtData(d) {
+    return d.toLocaleDateString('pt-BR');
+  }
+
+  async function gerarRelatorio() {
+    const intervalo = calcularIntervalo();
+    if (!intervalo) return;
+
+    const btn = document.getElementById('btn-gerar');
+    btn.disabled = true;
+    btn.textContent = 'Gerando…';
+
+    const { data, error } = await sb.rpc('relatorio_ocupacao', {
+      p_inicio: intervalo.inicio.toISOString(),
+      p_fim: intervalo.fim.toISOString()
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'Gerar relatório';
+
+    if (error) {
+      alert('Erro ao gerar relatório: ' + error.message);
+      return;
+    }
+
+    const tipoFiltro = document.getElementById('tipo').value;
+    let linhas = data || [];
+    if (tipoFiltro !== 'todos') {
+      linhas = linhas.filter(l => l.tipo === tipoFiltro);
+    }
+
+    ultimoResultado = linhas;
+    renderResultado(linhas, intervalo);
+  }
+
+  function renderResultado(linhas, intervalo) {
+    const resultado = document.getElementById('resultado');
+    const estadoVazio = document.getElementById('estado-vazio');
+    const info = document.getElementById('resultado-info');
+    const tabelaArea = document.getElementById('tabela-area');
+
+    if (!linhas.length) {
+      resultado.style.display = 'none';
+      estadoVazio.style.display = 'block';
+      estadoVazio.textContent = 'Nenhum registro encontrado nesse período.';
+      return;
+    }
+
+    estadoVazio.style.display = 'none';
+    resultado.style.display = 'block';
+    info.textContent = `Período: ${fmtData(intervalo.inicio)} até ${fmtData(intervalo.fim)} · ${linhas.length} linha(s)`;
+
+    tabelaArea.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Unidade</th>
+            <th>Tipo</th>
+            <th class="num">Leitos</th>
+            <th class="num">Registros</th>
+            <th class="num">Média ocupação</th>
+            <th class="num">Máx. ocupação</th>
+            <th class="num">Registros acima da capacidade</th>
+            <th class="num">Máx. pacientes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${linhas.map(l => `
+            <tr class="${l.registros_acima_capacidade > 0 ? 'overcap' : ''}">
+              <td>${l.nome}</td>
+              <td><span class="tipo-tag">${l.tipo === 'enfermaria' ? 'Enfermaria' : 'Sala Vermelha'}</span></td>
+              <td class="num">${l.leitos_totais}</td>
+              <td class="num">${l.total_registros}</td>
+              <td class="num">${l.media_percentual}%</td>
+              <td class="num">${l.max_percentual}%</td>
+              <td class="num destaque">${l.registros_acima_capacidade}</td>
+              <td class="num">${l.max_pacientes}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function baixarCSV() {
+    if (!ultimoResultado.length) return;
+    const header = ['Unidade', 'Tipo', 'Leitos', 'Registros', 'Media(%)', 'Max(%)', 'RegistrosAcimaCapacidade', 'MaxPacientes'];
+    const linhas = ultimoResultado.map(l => [
+      l.nome, l.tipo, l.leitos_totais, l.total_registros, l.media_percentual, l.max_percentual, l.registros_acima_capacidade, l.max_pacientes
+    ]);
+    const csv = [header, ...linhas].map(r => r.map(v => `"${v}"`).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relatorio_ocupacao_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById('btn-gerar').addEventListener('click', gerarRelatorio);
+  document.getElementById('btn-csv').addEventListener('click', baixarCSV);
+</script>
+</body>
+</html>
