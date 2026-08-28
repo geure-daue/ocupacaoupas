@@ -17,7 +17,7 @@
     --verde-bg: #eef8f1;    --verde-fg: #1f7a45;  --verde-line: #3fa869;
     --amarelo-bg: #fdf7e6;  --amarelo-fg: #8a6b0a; --amarelo-line: #e0b62c;
     --vermelho-bg: #fdedec; --vermelho-fg: #a33025; --vermelho-line: #d84b3e;
-    --preto-bg: #f1e9e9;    --preto-fg: #5c1611;  --preto-line: #7a1f1a;
+    --preto-bg: #ececec;    --preto-fg: #1a1a1a;  --preto-line: #000000;
     --sem-bg: #f2f3f4;      --sem-fg: #8b979d;    --sem-line: #d3dadd;
   }
   * { box-sizing: border-box; }
@@ -88,6 +88,7 @@
   .tabs{
     display:flex;
     gap: 8px;
+    flex-wrap: wrap;
     margin-bottom: 18px;
   }
   .tabs button{
@@ -128,15 +129,6 @@
     background: var(--accent);
     border-color: var(--accent);
   }
-  .controls a.report-link{
-    margin-left: auto;
-    font-size: 13px;
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 700;
-  }
-  .controls a.report-link:hover{ text-decoration: underline; }
-
   .legend{
     margin-bottom: 22px;
     display:flex;
@@ -273,13 +265,13 @@
 
 <div class="tabs">
   <button id="tab-sala" class="active">Sala Vermelha</button>
-  <button id="tab-enf">Enfermarias</button>
+  <button id="tab-enf">Enfermaria Adulto</button>
+  <button id="tab-enf-ped">Enfermaria Pediátrica</button>
 </div>
 
 <div class="controls">
   <button id="sort-ordem" class="active">Ordem padrão</button>
   <button id="sort-ocupacao">Mais vazias primeiro</button>
-  <a class="report-link" href="relatorios.html">📊 Relatórios →</a>
 </div>
 
 <div class="legend">
@@ -310,6 +302,7 @@
   let tipoAtivo = 'sala_vermelha';
 
   const nivelLabel = { verde: 'Verde', amarelo: 'Amarelo', vermelho: 'Vermelho', preto: 'Preto', sem_registro: 'Sem registro' };
+  const tipoLabel = { sala_vermelha: 'Sala Vermelha', enfermaria: 'Enfermaria Adulto', enfermaria_pediatrica: 'Enfermaria Pediátrica' };
 
   function fmtMinutos(min) {
     if (min == null) return '—';
@@ -330,7 +323,7 @@
     }
     banner.classList.add('show');
     list.innerHTML = atrasadas.map(u => `
-      <li><strong>${u.nome}</strong> — ${u.tipo === 'enfermaria' ? 'Enfermaria' : 'Sala Vermelha'}
+      <li><strong>${u.nome}</strong> — ${tipoLabel[u.tipo] || u.tipo}
         ${u.registrado_em ? ' · último lançamento ' + fmtMinutos(u.minutos_desde_registro) : ' · nenhum lançamento ainda'}</li>
     `).join('');
   }
@@ -388,18 +381,19 @@
     }
   }
 
-  document.getElementById('tab-sala').addEventListener('click', () => {
-    tipoAtivo = 'sala_vermelha';
-    document.getElementById('tab-sala').classList.add('active');
-    document.getElementById('tab-enf').classList.remove('active');
+  const tabButtons = {
+    sala_vermelha: document.getElementById('tab-sala'),
+    enfermaria: document.getElementById('tab-enf'),
+    enfermaria_pediatrica: document.getElementById('tab-enf-ped')
+  };
+  function trocarTab(tipo) {
+    tipoAtivo = tipo;
+    Object.entries(tabButtons).forEach(([t, btn]) => btn.classList.toggle('active', t === tipo));
     render();
-  });
-  document.getElementById('tab-enf').addEventListener('click', () => {
-    tipoAtivo = 'enfermaria';
-    document.getElementById('tab-enf').classList.add('active');
-    document.getElementById('tab-sala').classList.remove('active');
-    render();
-  });
+  }
+  tabButtons.sala_vermelha.addEventListener('click', () => trocarTab('sala_vermelha'));
+  tabButtons.enfermaria.addEventListener('click', () => trocarTab('enfermaria'));
+  tabButtons.enfermaria_pediatrica.addEventListener('click', () => trocarTab('enfermaria_pediatrica'));
 
   document.getElementById('sort-ordem').addEventListener('click', (e) => {
     sortMode = 'ordem';
