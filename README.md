@@ -120,33 +120,6 @@ Enfermaria Pediátrica, apague a linha dela nessa tabela).
 
 Suba os arquivos para o repositório institucional e ative o GitHub Pages.
 
-### 5. Links de lançamento (um por UPA)
-
-```
-.../lancamento.html?u=barreiro
-.../lancamento.html?u=centro_sul
-.../lancamento.html?u=leste
-.../lancamento.html?u=nordeste
-.../lancamento.html?u=noroeste
-.../lancamento.html?u=norte
-.../lancamento.html?u=oeste
-.../lancamento.html?u=pampulha
-.../lancamento.html?u=venda_nova
-```
-
-Cada link atende Sala Vermelha, Enfermaria Adulto e Enfermaria
-Pediátrica — a pessoa escolhe dentro da página.
-
-### 6. Dashboard e relatórios
-
-```
-.../dashboard.html
-.../relatorios.html
-```
-
-O link de relatórios não aparece no dashboard — compartilhe
-`.../relatorios.html` só com quem precisa extrair relatórios.
-
 ## Sobre a heartbeat / pausa por inatividade
 
 O workflow `.github/workflows/heartbeat.yml` (se presente no seu
