@@ -255,7 +255,6 @@
   }
 
   const tipoBotoes = { sala_vermelha: 'tipo-sala', enfermaria: 'tipo-enf', enfermaria_pediatrica: 'tipo-enf-ped' };
-
   function trocarTipo(tipo) {
     tipoAtual = tipo;
     Object.entries(tipoBotoes).forEach(([t, id]) => document.getElementById(id).classList.toggle('active', t === tipo));
