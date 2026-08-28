@@ -182,9 +182,10 @@
     <div class="campo">
       <label for="tipo">Tipo</label>
       <select id="tipo">
-        <option value="todos">Sala Vermelha + Enfermaria</option>
+        <option value="todos">Sala Vermelha + Enfermarias</option>
         <option value="sala_vermelha">Só Sala Vermelha</option>
-        <option value="enfermaria">Só Enfermaria</option>
+        <option value="enfermaria">Só Enfermaria Adulto</option>
+        <option value="enfermaria_pediatrica">Só Enfermaria Pediátrica</option>
       </select>
     </div>
 
@@ -213,6 +214,8 @@
   // ---------------------------------------------------------------------
 
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const tipoLabel = { sala_vermelha: 'Sala Vermelha', enfermaria: 'Enfermaria Adulto', enfermaria_pediatrica: 'Enfermaria Pediátrica' };
 
   let ultimoResultado = [];
 
@@ -315,7 +318,7 @@
           ${linhas.map(l => `
             <tr class="${l.registros_acima_capacidade > 0 ? 'overcap' : ''}">
               <td>${l.nome}</td>
-              <td><span class="tipo-tag">${l.tipo === 'enfermaria' ? 'Enfermaria' : 'Sala Vermelha'}</span></td>
+              <td><span class="tipo-tag">${tipoLabel[l.tipo] || l.tipo}</span></td>
               <td class="num">${l.leitos_totais}</td>
               <td class="num">${l.total_registros}</td>
               <td class="num">${l.media_percentual}%</td>
