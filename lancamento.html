@@ -18,7 +18,7 @@
     --verde: #3fa869;
     --amarelo: #e0b62c;
     --vermelho: #d84b3e;
-    --preto: #7a1f1a;
+    --preto: #000000;
   }
   * { box-sizing: border-box; }
   body{
@@ -67,8 +67,8 @@
   }
   .tipo-toggle button{
     flex:1;
-    padding: 10px 8px;
-    font-size: 13.5px;
+    padding: 10px 6px;
+    font-size: 12.5px;
     font-weight: 700;
     background: transparent;
     border: none;
@@ -197,8 +197,10 @@
   const unidadeId = params.get('u');
 
   let tipoAtual = 'sala_vermelha';
-  let capacidades = {}; // { sala_vermelha: {leitos_totais}, enfermaria: {...} }
+  let capacidades = {}; // { sala_vermelha: {leitos_totais}, enfermaria: {...}, enfermaria_pediatrica: {...} }
   let unidadeNome = '';
+
+  const tipoLabel = { sala_vermelha: 'Sala Vermelha', enfermaria: 'Enfermaria Adulto', enfermaria_pediatrica: 'Enfermaria Pediátrica' };
 
   function nivel(pct) {
     if (pct <= 50) return { label: 'Verde', color: 'var(--verde)' };
@@ -242,18 +244,21 @@
       <h1>${unidadeNome}</h1>
       <div class="tipo-toggle">
         <button id="tipo-sala" class="active">Sala Vermelha</button>
-        <button id="tipo-enf">Enfermaria</button>
+        <button id="tipo-enf">Enf. Adulto</button>
+        <button id="tipo-enf-ped">Enf. Pediátrica</button>
       </div>
       <div id="form-area"></div>
     `;
     document.getElementById('tipo-sala').addEventListener('click', () => trocarTipo('sala_vermelha'));
     document.getElementById('tipo-enf').addEventListener('click', () => trocarTipo('enfermaria'));
+    document.getElementById('tipo-enf-ped').addEventListener('click', () => trocarTipo('enfermaria_pediatrica'));
   }
+
+  const tipoBotoes = { sala_vermelha: 'tipo-sala', enfermaria: 'tipo-enf', enfermaria_pediatrica: 'tipo-enf-ped' };
 
   function trocarTipo(tipo) {
     tipoAtual = tipo;
-    document.getElementById('tipo-sala').classList.toggle('active', tipo === 'sala_vermelha');
-    document.getElementById('tipo-enf').classList.toggle('active', tipo === 'enfermaria');
+    Object.entries(tipoBotoes).forEach(([t, id]) => document.getElementById(id).classList.toggle('active', t === tipo));
     carregarFormulario();
   }
 
@@ -262,7 +267,7 @@
     const formArea = document.getElementById('form-area');
 
     if (!leitos) {
-      formArea.innerHTML = `<div class="notfound">Esta unidade não tem capacidade cadastrada para ${tipoAtual === 'enfermaria' ? 'Enfermaria' : 'Sala Vermelha'}. Fale com a coordenação.</div>`;
+      formArea.innerHTML = `<div class="notfound">Esta unidade não tem capacidade cadastrada para ${tipoLabel[tipoAtual]}. Fale com a coordenação.</div>`;
       return;
     }
 
@@ -277,13 +282,13 @@
       .limit(1)
       .maybeSingle();
 
-    const cronogramaTexto = tipoAtual === 'enfermaria'
+    const cronogramaTexto = (tipoAtual === 'enfermaria' || tipoAtual === 'enfermaria_pediatrica')
       ? 'Lançamento obrigatório às 9h e às 20h'
       : 'Lançamento obrigatório a cada 2 horas (00, 02, 04… 22h)';
 
     formArea.innerHTML = `
       <div class="field">
-        <label for="pacientes">Pacientes internados (${tipoAtual === 'enfermaria' ? 'Enfermaria' : 'Sala Vermelha'})</label>
+        <label for="pacientes">Pacientes internados (${tipoLabel[tipoAtual]})</label>
         <input type="number" id="pacientes" min="0" inputmode="numeric"
                value="${ultimo ? ultimo.pacientes_internados : ''}" placeholder="0">
       </div>
