@@ -197,7 +197,7 @@
   const unidadeId = params.get('u');
 
   let tipoAtual = 'sala_vermelha';
-  let capacidades = {}; // { sala_vermelha: {leitos_totais}, enfermaria: {...}, enfermaria_pediatrica: {...} }
+  let capacidades = {}; // preenchido só com os tipos ATIVOS desta unidade
   let unidadeNome = '';
 
   const tipoLabel = { sala_vermelha: 'Sala Vermelha', enfermaria: 'Enfermaria Adulto', enfermaria_pediatrica: 'Enfermaria Pediátrica' };
@@ -230,7 +230,8 @@
     const { data: caps } = await sb
       .from('capacidade_leitos')
       .select('tipo, leitos_totais')
-      .eq('unidade_id', unidadeId);
+      .eq('unidade_id', unidadeId)
+      .eq('ativo', true);
 
     (caps || []).forEach(c => { capacidades[c.tipo] = c.leitos_totais; });
 
@@ -238,26 +239,32 @@
     await carregarFormulario();
   }
 
+  const ORDEM_TIPOS = ['sala_vermelha', 'enfermaria', 'enfermaria_pediatrica'];
+  const BOTAO_LABEL = { sala_vermelha: 'Sala Vermelha', enfermaria: 'Enf. Adulto', enfermaria_pediatrica: 'Enf. Pediátrica' };
+
   function renderShell() {
+    const tiposDisponiveis = ORDEM_TIPOS.filter(t => capacidades[t] != null);
+    if (!tiposDisponiveis.includes(tipoAtual)) tipoAtual = tiposDisponiveis[0];
+
     app.innerHTML = `
       <p class="eyebrow">PAP DAUE 018</p>
       <h1>${unidadeNome}</h1>
       <div class="tipo-toggle">
-        <button id="tipo-sala" class="active">Sala Vermelha</button>
-        <button id="tipo-enf">Enf. Adulto</button>
-        <button id="tipo-enf-ped">Enf. Pediátrica</button>
+        ${tiposDisponiveis.map(t => `<button id="tipo-btn-${t}" class="${t === tipoAtual ? 'active' : ''}">${BOTAO_LABEL[t]}</button>`).join('')}
       </div>
       <div id="form-area"></div>
     `;
-    document.getElementById('tipo-sala').addEventListener('click', () => trocarTipo('sala_vermelha'));
-    document.getElementById('tipo-enf').addEventListener('click', () => trocarTipo('enfermaria'));
-    document.getElementById('tipo-enf-ped').addEventListener('click', () => trocarTipo('enfermaria_pediatrica'));
+    tiposDisponiveis.forEach(t => {
+      document.getElementById(`tipo-btn-${t}`).addEventListener('click', () => trocarTipo(t));
+    });
   }
 
-  const tipoBotoes = { sala_vermelha: 'tipo-sala', enfermaria: 'tipo-enf', enfermaria_pediatrica: 'tipo-enf-ped' };
   function trocarTipo(tipo) {
     tipoAtual = tipo;
-    Object.entries(tipoBotoes).forEach(([t, id]) => document.getElementById(id).classList.toggle('active', t === tipo));
+    ORDEM_TIPOS.forEach(t => {
+      const el = document.getElementById(`tipo-btn-${t}`);
+      if (el) el.classList.toggle('active', t === tipo);
+    });
     carregarFormulario();
   }
 
