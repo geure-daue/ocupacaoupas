@@ -141,6 +141,35 @@
     color: var(--text-dim);
   }
 
+  .modo-toggle{
+    display:flex;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .modo-toggle button{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor:pointer;
+  }
+  .modo-toggle button.active{
+    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .aviso-limite{
+    font-size: 12.5px;
+    color: #97600d;
+    background: #fdf1de;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+
   .empty{ text-align:center; padding: 40px 20px; color: var(--text-dim); }
 </style>
 </head>
@@ -156,10 +185,17 @@
 </div>
 
 <div class="panel">
+  <div class="modo-toggle">
+    <button id="modo-resumo" class="active">Resumo (médias por período)</button>
+    <button id="modo-detalhado">Detalhado (cada lançamento, com data/hora)</button>
+  </div>
+
   <div class="filtros">
     <div class="campo">
       <label for="periodo">Período</label>
       <select id="periodo">
+        <option value="1">Hoje / últimas 24h</option>
+        <option value="2">Últimas 48h</option>
         <option value="7">Semanal (últimos 7 dias)</option>
         <option value="30" selected>Mensal (últimos 30 dias)</option>
         <option value="182">Semestral (últimos 6 meses)</option>
@@ -177,6 +213,13 @@
         <label for="data-fim">Até</label>
         <input type="date" id="data-fim">
       </div>
+    </div>
+
+    <div class="campo">
+      <label for="unidade">Unidade</label>
+      <select id="unidade">
+        <option value="todas">Todas as unidades</option>
+      </select>
     </div>
 
     <div class="campo">
@@ -216,14 +259,40 @@
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const tipoLabel = { sala_vermelha: 'Sala Vermelha', enfermaria: 'Enfermaria Adulto', enfermaria_pediatrica: 'Enfermaria Pediátrica' };
 
+  const LIMITE_DETALHADO = 1000;
+
+  let modo = 'resumo'; // 'resumo' | 'detalhado'
   let ultimoResultado = [];
 
   const periodoSelect = document.getElementById('periodo');
   const customDatas = document.getElementById('custom-datas');
+  const unidadeSelect = document.getElementById('unidade');
 
   periodoSelect.addEventListener('change', () => {
     customDatas.classList.toggle('show', periodoSelect.value === 'custom');
   });
+
+  document.getElementById('modo-resumo').addEventListener('click', (e) => {
+    modo = 'resumo';
+    document.getElementById('modo-resumo').classList.add('active');
+    document.getElementById('modo-detalhado').classList.remove('active');
+  });
+  document.getElementById('modo-detalhado').addEventListener('click', (e) => {
+    modo = 'detalhado';
+    document.getElementById('modo-detalhado').classList.add('active');
+    document.getElementById('modo-resumo').classList.remove('active');
+  });
+
+  async function carregarUnidades() {
+    const { data } = await sb.from('unidades').select('id, nome').order('ordem');
+    (data || []).forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = u.nome;
+      unidadeSelect.appendChild(opt);
+    });
+  }
+  carregarUnidades();
 
   function calcularIntervalo() {
     const val = periodoSelect.value;
@@ -242,13 +311,16 @@
       return { inicio, fim: fimCustom };
     }
 
-    const dias = parseInt(val, 10);
+    const dias = parseFloat(val);
     inicio = new Date(fim.getTime() - dias * 24 * 60 * 60 * 1000);
     return { inicio, fim };
   }
 
   function fmtData(d) {
     return d.toLocaleDateString('pt-BR');
+  }
+  function fmtDataHora(iso) {
+    return new Date(iso).toLocaleString('pt-BR');
   }
 
   async function gerarRelatorio() {
@@ -259,13 +331,21 @@
     btn.disabled = true;
     btn.textContent = 'Gerando…';
 
+    if (modo === 'resumo') {
+      await gerarResumo(intervalo);
+    } else {
+      await gerarDetalhado(intervalo);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Gerar relatório';
+  }
+
+  async function gerarResumo(intervalo) {
     const { data, error } = await sb.rpc('relatorio_ocupacao', {
       p_inicio: intervalo.inicio.toISOString(),
       p_fim: intervalo.fim.toISOString()
     });
-
-    btn.disabled = false;
-    btn.textContent = 'Gerar relatório';
 
     if (error) {
       alert('Erro ao gerar relatório: ' + error.message);
@@ -273,16 +353,41 @@
     }
 
     const tipoFiltro = document.getElementById('tipo').value;
+    const unidadeFiltro = unidadeSelect.value;
     let linhas = data || [];
-    if (tipoFiltro !== 'todos') {
-      linhas = linhas.filter(l => l.tipo === tipoFiltro);
-    }
+    if (tipoFiltro !== 'todos') linhas = linhas.filter(l => l.tipo === tipoFiltro);
+    if (unidadeFiltro !== 'todas') linhas = linhas.filter(l => l.unidade_id === unidadeFiltro);
 
     ultimoResultado = linhas;
-    renderResultado(linhas, intervalo);
+    renderResumo(linhas, intervalo);
   }
 
-  function renderResultado(linhas, intervalo) {
+  async function gerarDetalhado(intervalo) {
+    const tipoFiltro = document.getElementById('tipo').value;
+    const unidadeFiltro = unidadeSelect.value;
+
+    let query = sb.from('v_registros_detalhado')
+      .select('*')
+      .gte('registrado_em', intervalo.inicio.toISOString())
+      .lt('registrado_em', intervalo.fim.toISOString())
+      .order('registrado_em', { ascending: false })
+      .limit(LIMITE_DETALHADO);
+
+    if (tipoFiltro !== 'todos') query = query.eq('tipo', tipoFiltro);
+    if (unidadeFiltro !== 'todas') query = query.eq('unidade_id', unidadeFiltro);
+
+    const { data, error } = await query;
+
+    if (error) {
+      alert('Erro ao gerar relatório: ' + error.message);
+      return;
+    }
+
+    ultimoResultado = data || [];
+    renderDetalhado(data || [], intervalo);
+  }
+
+  function renderResumo(linhas, intervalo) {
     const resultado = document.getElementById('resultado');
     const estadoVazio = document.getElementById('estado-vazio');
     const info = document.getElementById('resultado-info');
@@ -297,7 +402,7 @@
 
     estadoVazio.style.display = 'none';
     resultado.style.display = 'block';
-    info.textContent = `Período: ${fmtData(intervalo.inicio)} até ${fmtData(intervalo.fim)} · ${linhas.length} linha(s)`;
+    info.textContent = `Período: ${fmtData(intervalo.inicio)} até ${fmtData(intervalo.fim)} · ${linhas.length} linha(s) · valores são médias/máximos do período`;
 
     tabelaArea.innerHTML = `
       <table>
@@ -331,18 +436,81 @@
     `;
   }
 
+  function renderDetalhado(linhas, intervalo) {
+    const resultado = document.getElementById('resultado');
+    const estadoVazio = document.getElementById('estado-vazio');
+    const info = document.getElementById('resultado-info');
+    const tabelaArea = document.getElementById('tabela-area');
+
+    if (!linhas.length) {
+      resultado.style.display = 'none';
+      estadoVazio.style.display = 'block';
+      estadoVazio.textContent = 'Nenhum registro encontrado nesse período.';
+      return;
+    }
+
+    estadoVazio.style.display = 'none';
+    resultado.style.display = 'block';
+    info.textContent = `Período: ${fmtData(intervalo.inicio)} até ${fmtData(intervalo.fim)} · ${linhas.length} lançamento(s), do mais recente ao mais antigo`;
+
+    const avisoLimite = linhas.length >= LIMITE_DETALHADO
+      ? `<div class="aviso-limite">⚠ Mostrando os ${LIMITE_DETALHADO} lançamentos mais recentes do período — restrinja a unidade, o tipo ou o período para ver tudo.</div>`
+      : '';
+
+    tabelaArea.innerHTML = `
+      ${avisoLimite}
+      <table>
+        <thead>
+          <tr>
+            <th>Data/Hora</th>
+            <th>Unidade</th>
+            <th>Tipo</th>
+            <th class="num">Pacientes</th>
+            <th class="num">Leitos</th>
+            <th class="num">Ocupação</th>
+            <th>Registrado por</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${linhas.map(l => `
+            <tr class="${l.acima_capacidade ? 'overcap' : ''}">
+              <td>${fmtDataHora(l.registrado_em)}</td>
+              <td>${l.nome}</td>
+              <td><span class="tipo-tag">${tipoLabel[l.tipo] || l.tipo}</span></td>
+              <td class="num destaque">${l.pacientes_internados}</td>
+              <td class="num">${l.leitos_totais}</td>
+              <td class="num">${l.percentual_ocupacao}%</td>
+              <td>${l.registrado_por || '—'}${l.registrado_cargo ? ' (' + l.registrado_cargo + ')' : ''}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
   function baixarCSV() {
     if (!ultimoResultado.length) return;
-    const header = ['Unidade', 'Tipo', 'Leitos', 'Registros', 'Media(%)', 'Max(%)', 'RegistrosAcimaCapacidade', 'MaxPacientes'];
-    const linhas = ultimoResultado.map(l => [
-      l.nome, l.tipo, l.leitos_totais, l.total_registros, l.media_percentual, l.max_percentual, l.registros_acima_capacidade, l.max_pacientes
-    ]);
-    const csv = [header, ...linhas].map(r => r.map(v => `"${v}"`).join(';')).join('\n');
+
+    let header, linhasCSV;
+    if (modo === 'resumo') {
+      header = ['Unidade', 'Tipo', 'Leitos', 'Registros', 'Media(%)', 'Max(%)', 'RegistrosAcimaCapacidade', 'MaxPacientes'];
+      linhasCSV = ultimoResultado.map(l => [
+        l.nome, l.tipo, l.leitos_totais, l.total_registros, l.media_percentual, l.max_percentual, l.registros_acima_capacidade, l.max_pacientes
+      ]);
+    } else {
+      header = ['DataHora', 'Unidade', 'Tipo', 'Pacientes', 'Leitos', 'Ocupacao(%)', 'AcimaCapacidade', 'RegistradoPor', 'Cargo'];
+      linhasCSV = ultimoResultado.map(l => [
+        fmtDataHora(l.registrado_em), l.nome, l.tipo, l.pacientes_internados, l.leitos_totais, l.percentual_ocupacao,
+        l.acima_capacidade ? 'SIM' : 'NAO', l.registrado_por, l.registrado_cargo
+      ]);
+    }
+
+    const csv = [header, ...linhasCSV].map(r => r.map(v => `"${v}"`).join(';')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `relatorio_ocupacao_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `relatorio_ocupacao_${modo}_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
